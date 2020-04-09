@@ -55,6 +55,14 @@ type cdcTestArgs struct {
 }
 
 func cdcBasicTest(ctx context.Context, t *test, c *cluster, args cdcTestArgs) {
+	// workloadType:             ledgerWorkloadType,
+	// workloadDuration:         "30m",
+	// initialScan:              true,
+	// rangefeed:                useRangeFeed,
+	// targetInitialScanLatency: 10 * time.Minute,
+	// targetSteadyLatency:      time.Minute,
+	// targetTxnPerSecond:       575,
+
 	// Skip the poller test on v19.2. After 19.2 is out, we should likely delete
 	// the test entirely.
 	if !args.rangefeed && t.buildVersion.Compare(version.MustParse(`v19.1.0-0`)) > 0 {
@@ -82,6 +90,26 @@ func cdcBasicTest(ctx context.Context, t *test, c *cluster, args cdcTestArgs) {
 	); err != nil && !strings.Contains(err.Error(), "unknown cluster setting") {
 		t.Fatal(err)
 	}
+
+	// XXX: Reduce the likelihood of splits due to load (try to induce it based on size).
+	// XXX: Try changing load based splitting to split at midpoint. That's the
+	// material difference between the two? Another difference is that a larger
+	// keyspace is "split" up. Perhaps this would explain why this manifested
+	// after range max size got pushed out to 512 MB?
+	if _, err := db.Exec(
+		`SET CLUSTER SETTING kv.range_split.load_qps_threshold = $1`, 10000,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	// XXX: Alter default range size to control splitting behavior.
+	// if _, err := db.Exec(
+	// 	`ALTER RANGE default CONFIGURE ZONE USING range_min_bytes = $1, range_max_bytes = $2;`,
+	// 	16 << 20, 64 << 20, // << 20 gives the MB multiplier.
+	// ); err != nil {
+	// 	t.Fatal(err)
+	// }
+
 	kafka := kafkaManager{
 		c:     c,
 		nodes: kafkaNode,
@@ -171,6 +199,9 @@ func cdcBasicTest(ctx context.Context, t *test, c *cluster, args cdcTestArgs) {
 		// changefeed is never considered sufficiently caught up. We could
 		// instead make targetSteadyLatency less aggressive, but it'd be nice to
 		// keep it where it is.
+		// XXX: Trying a super high closed timestamp here shows the same latency
+		// climb, which is to say ranges not receiving closedts updates are a
+		// probable cause.
 		if _, err := db.Exec(
 			`SET CLUSTER SETTING kv.closed_timestamp.target_duration='10s'`,
 		); err != nil {
@@ -225,6 +256,7 @@ func cdcBasicTest(ctx context.Context, t *test, c *cluster, args cdcTestArgs) {
 
 	verifier.assertValid(t)
 	workloadEnd := timeutil.Now()
+	_, _ = workloadStart, workloadEnd
 	if args.targetTxnPerSecond > 0.0 {
 		verifyTxnPerSecond(
 			ctx, c, t, crdbNodes.randNode(), workloadStart, workloadEnd, args.targetTxnPerSecond, 0.05,
@@ -992,6 +1024,9 @@ func getChangefeedInfo(db *gosql.DB, jobID int) (changefeedInfo, error) {
 	if err := protoutil.Unmarshal(progressBytes, &progress); err != nil {
 		return changefeedInfo{}, err
 	}
+	// XXX: It stops changing at some point at the server. Look in to where it's
+	// coming from, and where said thing is being updated. Given that, figure
+	// out how we could get to a point where we stop updating it somehow.
 	var highwaterTime time.Time
 	highwater := progress.GetHighWater()
 	if highwater != nil {

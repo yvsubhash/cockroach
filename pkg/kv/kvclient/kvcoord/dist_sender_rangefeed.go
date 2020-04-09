@@ -39,6 +39,7 @@ type singleRangeInfo struct {
 //
 // Note that the timestamps in RangeFeedCheckpoint events that are streamed back
 // may be lower than the timestamp given here.
+// XXX: Here? This file. Kind of improperly named, multiplexes underneath.
 func (ds *DistSender) RangeFeed(
 	ctx context.Context,
 	span roachpb.Span,
@@ -124,6 +125,7 @@ func (ds *DistSender) divideAndSendRangeFeedToRanges(
 // manages lifecycle events of the range in order to maintain the RangeFeed
 // connection; this may involve instructing higher-level functions to retry
 // this rangefeed, or subdividing the range further in the event of a split.
+// XXX: Here. This deals with the split of a range and stuff.
 func (ds *DistSender) partialRangeFeed(
 	ctx context.Context,
 	rangeInfo *singleRangeInfo,
@@ -164,14 +166,14 @@ func (ds *DistSender) partialRangeFeed(
 				// reported them, so no action is required before the next
 				// retry.
 			case *roachpb.SendError, *roachpb.RangeNotFoundError:
-				// Evict the decriptor from the cache and reload on next attempt.
+				// Evict the descriptor from the cache and reload on next attempt.
 				if err := rangeInfo.token.Evict(ctx); err != nil {
 					return err
 				}
 				rangeInfo.desc = nil
 				continue
 			case *roachpb.RangeKeyMismatchError:
-				// Evict the decriptor from the cache.
+				// Evict the descriptor from the cache.
 				if err := rangeInfo.token.Evict(ctx); err != nil {
 					return err
 				}
@@ -187,7 +189,7 @@ func (ds *DistSender) partialRangeFeed(
 					continue
 				case roachpb.RangeFeedRetryError_REASON_RANGE_SPLIT,
 					roachpb.RangeFeedRetryError_REASON_RANGE_MERGED:
-					// Evict the decriptor from the cache.
+					// Evict the descriptor from the cache.
 					if err := rangeInfo.token.Evict(ctx); err != nil {
 						return err
 					}

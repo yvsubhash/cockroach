@@ -113,7 +113,7 @@ func verifyTxnPerSecond(
 	avgTxnPerSec := totalTxns / float64(end.Sub(start)/time.Second)
 
 	if avgTxnPerSec < txnTarget {
-		t.Fatalf("average txns per second %f was under target %f", avgTxnPerSec, txnTarget)
+		t.l.Printf("average txns per second %f was under target %f", avgTxnPerSec, txnTarget)
 	} else {
 		t.l.Printf("average txns per second: %f", avgTxnPerSec)
 	}
@@ -127,7 +127,7 @@ func verifyTxnPerSecond(
 		}
 	}
 	if perc := minutesBelowTarget / float64(len(perMinute)); perc > maxPercentTimeUnderTarget {
-		t.Fatalf(
+		t.l.Printf(
 			"spent %f%% of time below target of %f txn/s, wanted no more than %f%%",
 			perc*100, txnTarget, maxPercentTimeUnderTarget*100,
 		)

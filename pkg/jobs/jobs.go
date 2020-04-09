@@ -333,7 +333,7 @@ func (j *Job) HighWaterProgressed(ctx context.Context, progressedFn HighWaterPro
 			)
 		}
 		md.Progress.Progress = &jobspb.Progress_HighWater{
-			HighWater: &highWater,
+			HighWater: &highWater, // XXX: Eventually this stops getting called. Something "disconnects".
 		}
 		ju.UpdateProgress(md.Progress)
 		return nil

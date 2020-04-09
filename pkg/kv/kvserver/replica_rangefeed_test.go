@@ -75,6 +75,8 @@ func (s *testStream) Events() []*roachpb.RangeFeedEvent {
 	return s.mu.events
 }
 
+// XXX: This file.
+
 func TestReplicaRangefeed(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 

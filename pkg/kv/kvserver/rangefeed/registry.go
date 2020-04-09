@@ -233,7 +233,7 @@ func (r *registration) disconnect(pErr *roachpb.Error) {
 func (r *registration) outputLoop(ctx context.Context) error {
 	// If the registration has a catch-up scan,
 	if r.catchupIter != nil {
-		if err := r.runCatchupScan(); err != nil {
+		if err := r.runCatchupScan(ctx); err != nil {
 			err = errors.Wrap(err, "catch-up scan failed")
 			log.Error(ctx, err)
 			return err
@@ -278,7 +278,7 @@ func (r *registration) runOutputLoop(ctx context.Context) {
 // recorded changes in the replica that are newer than the catchupTimestamp.
 // This uses the iterator provided when the registration was originally created;
 // after the scan completes, the iterator will be closed.
-func (r *registration) runCatchupScan() error {
+func (r *registration) runCatchupScan(ctx context.Context) error {
 	if r.catchupIter == nil {
 		return nil
 	}
@@ -286,8 +286,14 @@ func (r *registration) runCatchupScan() error {
 	defer func() {
 		r.catchupIter.Close()
 		r.catchupIter = nil
-		r.metrics.RangeFeedCatchupScanNanos.Inc(timeutil.Since(start).Nanoseconds())
+		duration := timeutil.Since(start)
+		// XXX: Consider logging if it takes longer than a slow threshold.
+		log.Infof(ctx, "catch up scan took %s", duration.String())
+		r.metrics.RangeFeedCatchupScanNanos.Inc(duration.Nanoseconds())
 	}()
+
+	// XXX: Manual hack for introducing catch up scan delay.
+	// time.Sleep(30 * time.Second)
 
 	var a bufalloc.ByteAllocator
 	startKey := storage.MakeMVCCMetadataKey(r.span.Key)

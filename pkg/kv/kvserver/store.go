@@ -1730,7 +1730,7 @@ func (s *Store) startClosedTimestampRangefeedSubscriber(ctx context.Context) {
 				}
 
 				// Gather replicas to notify under lock.
-				s.rangefeedReplicas.Lock()
+				s.rangefeedReplicas.Lock() // XXX: Make sure all replicas of interest are here.
 				for replID := range s.rangefeedReplicas.m {
 					replIDs = append(replIDs, replID)
 				}
@@ -1741,7 +1741,7 @@ func (s *Store) startClosedTimestampRangefeedSubscriber(ctx context.Context) {
 				for _, replID := range replIDs {
 					repl, err := s.GetReplica(replID)
 					if err != nil {
-						continue
+						continue // XXX: Why are we ignoring this error?
 					}
 					repl.handleClosedTimestampUpdate(ctx)
 				}

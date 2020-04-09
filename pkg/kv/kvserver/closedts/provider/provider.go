@@ -149,7 +149,7 @@ func (p *Provider) runCloser(ctx context.Context) {
 		next.WallTime -= int64(targetDuration)
 		if err != nil {
 			if everBeenLive && p.everyClockLog.ShouldLog() {
-				log.Warningf(ctx, "unable to move closed timestamp forward: %+v", err)
+				log.Warningf(ctx, "unable to move closed timestamp forward: %+v", err) // XXX: What does it mean for this to find itself to not be live?
 			}
 			// Broadcast even if nothing new was queued, so that the subscribers
 			// loop to check their client's context.

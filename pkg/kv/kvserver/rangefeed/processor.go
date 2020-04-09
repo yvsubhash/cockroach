@@ -434,6 +434,7 @@ func (p *Processor) ConsumeLogicalOps(ops ...enginepb.MVCCLogicalOp) bool {
 // EventChanTimeout configuration. If the method returns false, the processor
 // will have been stopped, so calling Stop is not necessary.  Safe to call on
 // nil Processor.
+// XXX: Processor is not actually stopped, it's only notified to be stopped.
 func (p *Processor) ForwardClosedTS(closedTS hlc.Timestamp) bool {
 	if p == nil {
 		return true

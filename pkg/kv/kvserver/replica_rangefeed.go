@@ -379,7 +379,7 @@ func (r *Replica) registerWithRangefeedRaftMuLocked(
 	// Set the rangefeed processor and filter reference. We know that no other
 	// registration process could have raced with ours because calling this
 	// method requires raftMu to be exclusively locked.
-	r.setRangefeedProcessor(p)
+	r.setRangefeedProcessor(p) // XXX: Are we registering newly split RHS replicas?
 	r.setRangefeedFilterLocked(filter)
 
 	// Check for an initial closed timestamp update immediately to help
@@ -600,15 +600,18 @@ func (r *Replica) handleClosedTimestampUpdateRaftMuLocked(ctx context.Context) {
 	// If the closed timestamp is sufficiently stale, signal that we want an
 	// update to the leaseholder so that it will eventually begin to progress
 	// again.
+	// XXX: This not making progress thing, could be related. What
+	// could cause us to not receive closets updates? What behavior would that
+	// manifest? https://github.com/cockroachdb/cockroach/pull/36684 ominously
+	// refers to bugs with closedts getting stuck. Maybe remove this defense
+	// "kicking" the closedts and see what happens.
 	slowClosedTSThresh := 5 * closedts.TargetDuration.Get(&r.store.cfg.Settings.SV)
 	if d := timeutil.Since(closedTS.GoTime()); d > slowClosedTSThresh {
 		m := r.store.metrics.RangeFeedMetrics
-		if m.RangeFeedSlowClosedTimestampLogN.ShouldLog() {
-			if closedTS.IsEmpty() {
-				log.Infof(ctx, "RangeFeed closed timestamp is empty")
-			} else {
-				log.Infof(ctx, "RangeFeed closed timestamp %s is behind by %s", closedTS, d)
-			}
+		if closedTS.IsEmpty() {
+			log.Infof(ctx, "RangeFeed closed timestamp is empty")
+		} else {
+			log.Infof(ctx, "RangeFeed closed timestamp %s is behind by %s", closedTS, d)
 		}
 
 		// Asynchronously attempt to nudge the closed timestamp in case it's stuck.
@@ -631,9 +634,7 @@ func (r *Replica) handleClosedTimestampUpdateRaftMuLocked(ctx context.Context) {
 				case m.RangeFeedSlowClosedTimestampNudgeSem <- struct{}{}:
 				}
 				defer func() { <-m.RangeFeedSlowClosedTimestampNudgeSem }()
-				if err := r.ensureClosedTimestampStarted(ctx); err != nil {
-					log.Infof(ctx, `RangeFeed failed to nudge: %s`, err)
-				}
+				log.Info(ctx, `skipping closedts nudge from RangeFeed`)
 			})
 			return nil, nil
 		})
@@ -644,7 +645,7 @@ func (r *Replica) handleClosedTimestampUpdateRaftMuLocked(ctx context.Context) {
 		return
 	}
 	if !p.ForwardClosedTS(closedTS) {
-		// Consumption failed and the rangefeed was stopped.
+		// Consumption failed and the rangefeed was stopped. // XXX: Assert that it has already stopped. Seems racey. What's the behavior if it hasn't?
 		r.unsetRangefeedProcessor(p)
 	}
 }
