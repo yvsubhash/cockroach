@@ -125,7 +125,7 @@ func (ds *DistSender) divideAndSendRangeFeedToRanges(
 // manages lifecycle events of the range in order to maintain the RangeFeed
 // connection; this may involve instructing higher-level functions to retry
 // this rangefeed, or subdividing the range further in the event of a split.
-// XXX: Here. This deals with the split of a range and stuff.
+// XXX: Look here. This deals with the split of a range and stuff.
 func (ds *DistSender) partialRangeFeed(
 	ctx context.Context,
 	rangeInfo *singleRangeInfo,
@@ -133,6 +133,7 @@ func (ds *DistSender) partialRangeFeed(
 	rangeCh chan<- singleRangeInfo,
 	eventCh chan<- *roachpb.RangeFeedEvent,
 ) error {
+    log.Infof(ctx, "xxx: establishing partial range feed over", rangeInfo.)
 	// Bound the partial rangefeed to the partial span.
 	span := rangeInfo.rs.AsRawSpanWithNoLocals()
 	ts := rangeInfo.ts
@@ -211,6 +212,7 @@ func (ds *DistSender) partialRangeFeed(
 // the rangefeed with a larger starting timestamp, reflecting the fact that all
 // values up to the last checkpoint have already been observed. Returns the
 // request's timestamp if not checkpoints are seen.
+// XXX: Look here.
 func (ds *DistSender) singleRangeFeed(
 	ctx context.Context,
 	span roachpb.Span,

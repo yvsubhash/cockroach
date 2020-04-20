@@ -760,7 +760,6 @@ func (cf *changeFrontier) handleFrontierChanged(isBehind bool) error {
 // which is stored in the job progress details. It is only called if the new
 // resolved timestamp is later than the current one. The isBehind argument is
 // used to determine whether an existing protected timestamp should be released.
-// XXX: We get here to update highwater.
 func (cf *changeFrontier) checkpointResolvedTimestamp(
 	resolved hlc.Timestamp, isBehind bool,
 ) (err error) {

@@ -91,24 +91,26 @@ func cdcBasicTest(ctx context.Context, t *test, c *cluster, args cdcTestArgs) {
 		t.Fatal(err)
 	}
 
-	// XXX: Reduce the likelihood of splits due to load (try to induce it based on size).
-	// XXX: Try changing load based splitting to split at midpoint. That's the
-	// material difference between the two? Another difference is that a larger
-	// keyspace is "split" up. Perhaps this would explain why this manifested
-	// after range max size got pushed out to 512 MB?
+	// XXX: Reduce the likelihood of splits due to load (trying instead to
+	// induce it based on size). The problems only manifest with larger 512 MB
+	// keyspans being split up, and the catch up iterator taking ~3s. Which is
+	// why simply increasing splits didn't help. Fall out from range size bump.
 	if _, err := db.Exec(
 		`SET CLUSTER SETTING kv.range_split.load_qps_threshold = $1`, 10000,
 	); err != nil {
 		t.Fatal(err)
 	}
 
-	// XXX: Alter default range size to control splitting behavior.
-	// if _, err := db.Exec(
-	// 	`ALTER RANGE default CONFIGURE ZONE USING range_min_bytes = $1, range_max_bytes = $2;`,
-	// 	16 << 20, 64 << 20, // << 20 gives the MB multiplier.
-	// ); err != nil {
-	// 	t.Fatal(err)
-	// }
+	// XXX: Alter default range size to control splitting behavior. Didn't help,
+	// we needed bigger ranges.
+	// XXX: Introduced manual lag + max range size, to try and repro in under a
+	// minute.
+	if _, err := db.Exec(
+		`ALTER RANGE default CONFIGURE ZONE USING range_min_bytes = $1, range_max_bytes = $2;`,
+		8 << 20, 16 << 20, // << 20 gives the MB multiplier.
+	); err != nil {
+		t.Fatal(err)
+	}
 
 	kafka := kafkaManager{
 		c:     c,
@@ -199,9 +201,9 @@ func cdcBasicTest(ctx context.Context, t *test, c *cluster, args cdcTestArgs) {
 		// changefeed is never considered sufficiently caught up. We could
 		// instead make targetSteadyLatency less aggressive, but it'd be nice to
 		// keep it where it is.
-		// XXX: Trying a super high closed timestamp here shows the same latency
-		// climb, which is to say ranges not receiving closedts updates are a
-		// probable cause.
+		// XXX: Trying a super high closed timestamp here showed the same latency
+		// climb, which is to say ranges not receiving closedts updates could've
+		// been a probable cause.
 		if _, err := db.Exec(
 			`SET CLUSTER SETTING kv.closed_timestamp.target_duration='10s'`,
 		); err != nil {
@@ -1024,9 +1026,6 @@ func getChangefeedInfo(db *gosql.DB, jobID int) (changefeedInfo, error) {
 	if err := protoutil.Unmarshal(progressBytes, &progress); err != nil {
 		return changefeedInfo{}, err
 	}
-	// XXX: It stops changing at some point at the server. Look in to where it's
-	// coming from, and where said thing is being updated. Given that, figure
-	// out how we could get to a point where we stop updating it somehow.
 	var highwaterTime time.Time
 	highwater := progress.GetHighWater()
 	if highwater != nil {

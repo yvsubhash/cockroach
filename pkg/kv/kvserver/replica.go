@@ -488,8 +488,8 @@ type Replica struct {
 		//
 		// Requires Replica.rangefeedMu be held when mutating the pointer.
 		// Requires Replica.raftMu be held when providing logical ops and
-		//  informing the processor of closed timestamp updates. This properly
-		//  synchronizes updates that are linearized and driven by the Raft log.
+		// informing the processor of closed timestamp updates. This properly
+		// synchronizes updates that are linearized and driven by the Raft log.
 		proc *rangefeed.Processor
 		// opFilter is a best-effort filter that informs the raft processing
 		// goroutine of which logical operations the rangefeed processor is

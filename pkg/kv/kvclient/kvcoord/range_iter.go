@@ -35,6 +35,7 @@ type RangeIterator struct {
 }
 
 // NewRangeIterator creates a new RangeIterator.
+// XXX: Write up semantics of this thing. It's kind of pulling things on demand.
 func NewRangeIterator(ds *DistSender) *RangeIterator {
 	return &RangeIterator{
 		ds: ds,

@@ -200,9 +200,8 @@ func (p *Processor) Start(stopper *stop.Stopper, rtsIter storage.SimpleIterator)
 
 		for {
 			select {
-
 			// Handle new registrations.
-			case r := <-p.regC:
+			case r := <-p.regC: // XXX: Multiple registrations? Check around split + rhs registration code.
 				if !p.Span.AsRawSpanWithNoLocals().Contains(r.span) {
 					log.Fatalf(ctx, "registration %s not in Processor's key range %v", r, p.Span)
 				}
@@ -226,6 +225,7 @@ func (p *Processor) Start(stopper *stop.Stopper, rtsIter storage.SimpleIterator)
 					case <-p.stoppedC:
 					}
 				}
+				// XXX: Getting called multiple times.
 				if err := stopper.RunAsyncTask(ctx, "rangefeed: output loop", runOutputLoop); err != nil {
 					if r.catchupIter != nil {
 						r.catchupIter.Close() // clean up

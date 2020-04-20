@@ -278,7 +278,7 @@ func (r *registration) runOutputLoop(ctx context.Context) {
 // recorded changes in the replica that are newer than the catchupTimestamp.
 // This uses the iterator provided when the registration was originally created;
 // after the scan completes, the iterator will be closed.
-func (r *registration) runCatchupScan(ctx context.Context) error {
+func (r *registration) runCatchupScan(ctx context.Context) error { // XXX: We don't really use ctx to check for cancellation.
 	if r.catchupIter == nil {
 		return nil
 	}
@@ -288,12 +288,12 @@ func (r *registration) runCatchupScan(ctx context.Context) error {
 		r.catchupIter = nil
 		duration := timeutil.Since(start)
 		// XXX: Consider logging if it takes longer than a slow threshold.
-		log.Infof(ctx, "catch up scan took %s", duration.String())
+		log.Infof(ctx, "catch up scan took %s, ctx err %+v", duration.String(), ctx.Err())
 		r.metrics.RangeFeedCatchupScanNanos.Inc(duration.Nanoseconds())
 	}()
 
 	// XXX: Manual hack for introducing catch up scan delay.
-	// time.Sleep(30 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	var a bufalloc.ByteAllocator
 	startKey := storage.MakeMVCCMetadataKey(r.span.Key)
